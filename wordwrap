@@ -1,0 +1,142 @@
+#!/usr/bin/php
+<?php
+
+if($argc < 3)
+	die("Usage: wordwrap file width\n");
+
+$text  	 	 = file_get_contents($argv[1]);
+$width     = intval($argv[2]);
+$textlen   = strlen($text);
+
+$lines 		 = word_wrap($text,$width,$textlen);
+$linecount = count($lines);
+$lines[]   = $textlen;
+$start 		 = 0;
+
+for($i=0;$i<$linecount;$i++) {
+	$next = $lines[$i+1];
+	$j    = $width;
+
+	while($start < $next && $j--) {
+		$char = $text[$start];
+		
+		if($char == "\r")	
+			break;
+		if($char == "\n")
+			break;
+		
+		print($char);
+		
+		$start++;
+	}
+	
+	print("\n");
+	
+	$start = $next;
+}
+
+function word_wrap($text,$width,$textlen) {
+
+	$charidx = 0; //Current character offset.
+	$lineidx = 0; //Offset to start of line.
+	
+	$lines   = array(); //Offsets to start of each line.
+	$linelen = 0;
+
+	while(1) {
+		switch($text[$charidx]) {
+			//A CR/LF is returned as one word.
+			case "\r":
+			case "\n":
+				$lines[] = $lineidx;
+		
+				$charidx++;
+			
+				$lineidx = $charidx;
+				$linelen = 0;
+			break;
+		
+			//Get a string of spaces as one word.
+			case " ":
+				$wordidx = $charidx; //Offset to start of word.
+
+				while($charidx != $textlen) {
+					if($text[$charidx] != " ")
+						break;
+
+					$charidx++;
+				}
+				
+				//Blank space "word."
+			
+				//If the addition of this word will exceed line length, 
+				//then wrap the line.
+				
+				//Excess space extends infinitely off the end of this line.
+
+				$linelen += $charidx - $wordidx;
+				
+				if($linelen > $width) {
+					$lines[] = $lineidx;
+					$lineidx = $charidx;
+					$linelen = 0;
+				}
+			break;
+	
+			//Get a string of non–space characters as one word.	
+			default:
+				$wordidx = $charidx;
+
+				while($charidx != $textlen) {
+					$char = $text[$charidx];
+					if($char == " ")
+						break;
+					if($char == "\r")
+						break;
+					if($char == "\n")
+						break;
+
+					$charidx++;
+				}
+				
+				//Regular word.
+		
+				//If the addition of this word exceeds width:
+				//Then wrap the line. 
+				//Set the new line index as the start of this new word.
+		
+				$wordlen = $charidx - $wordidx;
+				$linelen += $wordlen;
+		
+				if($linelen > $width) {
+					//Push partial line.
+					$lines[] = $lineidx;
+					$lineidx = $wordidx;
+					
+					//If this word alone exceeds width:
+					//Then push start of word as a new line, 
+					//advance the line index by width and 
+					//reduce the word length by width.
+					
+					//Repeat until the remaining word length no longer exceeds width.
+					
+					while($wordlen > $width) {
+						$lines[] = $lineidx;
+						$lineidx += $width;
+						$wordlen -= $width;
+					}
+					
+					$linelen = $wordlen;
+				}				
+			break;
+		}
+		
+		if($charidx == $textlen) {
+			//End of content, append last partial line if length > 0
+			if($linelen > 0)
+				$lines[] = $lineidx;
+			
+			return $lines;
+		}
+	}
+}
