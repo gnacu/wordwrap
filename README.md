@@ -11,7 +11,7 @@ It is written in a slightly strange way, not the way I would typically program.
 But this is because it is an exercise for me to figure out how it works and then factoring
 it down to a simple structure, in preparation for porting to 6502 Assembly.
 
-For example, there are two places where more than one IF statement occurs in a row next that
+For example, there are two places where more than one IF statement occurs in a row that
 result in the same thing if true, a break. Normally I would reduce these to a single IF
 statement with the conditions OR'd together. Splitting them into multiple IF's is closer
 in structure to how it will be in 6502.
