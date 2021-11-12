@@ -1,0 +1,155 @@
+#!/usr/local/bin/php
+<?php
+
+if($argc < 3)
+	die("Usage: wordwrap file width\n");
+
+$text  	 = file_get_contents($argv[1]);
+$width   = intval($argv[2]);
+$textlen = strlen($text);
+
+$lines   = array(); //Offsets to start of each line.
+$charidx = 0; //Current character offset.
+$lineidx = 0; //Offset to start of line.
+
+$linelen = 0;
+
+nextword:
+$charval = ord($text[$charidx]);
+
+//Anything less than 0x20 is treated as a carriage return.
+//A carriage return is returned as one word.
+if($charval < 0x20) {
+	$charidx++;
+
+	goto pushline;
+}
+
+//Get a string of spaces as one word.
+if($charval == 0x20) {
+	$wordidx = $charidx;
+
+	nextspc:
+	if(ord($text[$charidx]) != 0x20)
+		goto eospc;
+
+	$charidx++;
+	
+	$eof = $charidx == $textlen;
+	
+	if(!$eof)
+		goto nextspc;
+
+	eospc:
+	$wordlen = $charidx - $wordidx;
+	$linelen += $wordlen;
+
+	//If the addition of this word will exceed line length, 
+	//then wrap the line.
+	
+	//Excess space extends infinitely off the end of this line.
+	
+	if($linelen > $width) {
+pushline:
+			$lines[] = $lineidx;
+			$lineidx = $charidx;
+			$linelen = 0;
+	}
+	
+	if(!$eof)
+		goto nextword;
+}
+
+//Get a string of non–space characters as one word.	
+if($charval > 0x20) {
+	$wordidx = $charidx;
+
+	nextc:
+	if(ord($text[$charidx]) <= 0x20)
+		goto eow;
+
+	$charidx++;
+	
+	$eof = $charidx == $textlen;
+
+	if(!$eof)
+		goto nextc;
+
+	eow:
+	$wordlen = $charidx - $wordidx;
+	$linelen += $wordlen;
+	
+	//If the addition of this word exceeds width:
+	//Then wrap the line. 
+	//Set the new line index as the start of this new word.
+
+	if($linelen > $width) {
+		//Push partial line.
+		$lines[] = $lineidx;
+		$lineidx = $wordidx;
+		
+		//If this word alone exceeds width:
+		//Then push start of word as a new line, 
+		//advance the line index by width and 
+		//reduce the word length by width.
+		
+		//Repeat until the remaining word length no longer exceeds width.
+		
+		while($wordlen > $width) {
+			$lines[] = $lineidx;
+			$lineidx += $width;
+			$wordlen -= $width;
+		}
+		
+		$linelen = $wordlen;
+	}
+	
+	if(!$eof)
+		goto nextword;
+}
+
+//End of content, append last partial line if length > 0
+if($linelen > 0)
+	$lines[] = $lineidx;
+
+
+//Output the wrapped lines.
+
+$start = 0;
+$line  = 0;
+$count = count($lines)-1;
+$next  = $lines[1];
+
+nextline:
+
+$w = $width;
+
+while($start < $next && $w--) {
+	$char = $text[$start];
+	
+	if($char == "\r")	
+		break;
+	if($char == "\n")
+		break;
+	
+	print($char);
+	
+	$start++;
+}
+
+print("\n");
+
+$start = $next;
+
+$line++;
+
+if($line < $count) {
+	$next = $lines[$line+1];
+	goto nextline;
+}
+
+if($line == $count) {
+	$next = $textlen;
+	goto nextline;
+}
+
